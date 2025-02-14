@@ -1,7 +1,9 @@
+
+
 #PSYC 259 Homework 3 - Data Structure
 #For full credit, provide answers for at least 8/11 questions
 
-#List names of students collaborating with: 
+#List names of students collaborating with: Zachary Kelly
 
 ### SETUP: RUN THIS BEFORE STARTING ----------
 
@@ -40,6 +42,11 @@ load("rs_data.RData")
 #ANSWER
 
 
+rs_joined_orig <- full_join(rs_new, rs_old, by = c("Artist", "Song"))
+
+nrow(rs_joined_orig)
+View(rs_joined_orig)
+#the artist and songs failed to match up because the names were worded and punctuated differently between the two data frames
 
 ### Question 2 ---------- 
 
@@ -50,6 +57,16 @@ load("rs_data.RData")
 # Make Rank and Year into integer variables for rs_old before binding them into rs_all
 
 #ANSWER
+rs_new <- rs_new %>% mutate(Source = "New")
+rs_old <- rs_old %>% mutate(Source = "Old")
+
+rs_old <- rs_old %>% 
+  mutate(Rank = as.integer(Rank),
+         Year = as.integer(Year))
+
+rs_all <- bind_rows(rs_new, rs_old)
+
+View(rs_all)
 
 
 ### Question 3 ----------
@@ -63,6 +80,13 @@ load("rs_data.RData")
 
 #ANSWER
 
+rs_all <- rs_all %>% 
+  mutate(Artist = str_remove_all(Artist, "The "), Song = str_remove_all(Song, "The ")) %>%
+  mutate(Artist = str_replace_all(Artist, "&", "and"), Song = str_replace_all(Song, "&", "and")) %>%
+  mutate(Artist = str_remove_all(Artist, "[:punct:]"), Song = str_remove_all(Song, "[:punct:]")) %>%
+  mutate(Artist = str_to_lower(Artist), Song = str_to_lower(Song)) %>%
+  mutate(Artist = str_trim(Artist), Song = str_trim(Song))
+
 
 ### Question 4 ----------
 
@@ -75,20 +99,26 @@ load("rs_data.RData")
 # in the new rs_joined compared to the original. Use nrow to check (there should be 799 rows)
 
 #ANSWER
+new <- rs_all %>% filter(Source == "New")
+old <- rs_all %>% filter(Source == "Old")
 
+rs_joined <- full_join(new, old, by = join_by("Artist", "Song"), suffix = c("_New", "_Old"))
 
 ### Question 5 ----------
 
 # Let's clean up rs_joined with the following steps:
-  # remove the variable "Source"
-  # remove any rows where Rank_New or Rank_Old is NA (so we have only the songs that appeared in both lists)
-  # calculate a new variable called "Rank_Change" that subtracts new rank from old rank
-  # sort by rank change
+# remove the variable "Source"
+# remove any rows where Rank_New or Rank_Old is NA (so we have only the songs that appeared in both lists)
+# calculate a new variable called "Rank_Change" that subtracts new rank from old rank
+# sort by rank change
 # Save those changes to rs_joined
 # You should now be able to see how each song moved up/down in rankings between the two lists
 
 #ANSWER
-
+rs_joined <- rs_joined %>% select(!c(Source_Old, Source_New)) %>% filter(!is.na(Rank_Old)) %>% filter(!is.na(Rank_New)) %>%
+  mutate(Rank_Change = Rank_Old - Rank_New) %>%
+  arrange (Rank_Change) %>% 
+  select (!c(Year_New))
 
 ### Question 6 ----------
 
@@ -99,7 +129,14 @@ load("rs_data.RData")
 # Which decade improved the most?
 
 #ANSWER
+rs_joined <- rs_joined %>%
+  mutate(Decade = paste0(floor(Year_Old / 10) * 10, "s")) %>%
+  mutate(Decade = as.factor(Decade))
 
+rs_joined %>%
+  group_by(Decade) %>%
+  summarize(Mean_Rank_Change = mean(Rank_Change, na.rm = TRUE)) %>%
+  arrange(desc(Mean_Rank_Change))
 
 
 ### Question 7 ----------
@@ -110,6 +147,10 @@ load("rs_data.RData")
 # proportion of songs in each of the top three decades (vs. all the rest)
 
 #ANSWER
+fct_count(rs_joined$Decade)
+rs_joined <- rs_joined %>%
+  mutate(Decade_Lumped = fct_lump_n(Decade, n = 3))
+fct_count(rs_joined$Decade_Lumped, prop = TRUE)
 
 
 
@@ -120,7 +161,12 @@ load("rs_data.RData")
 # Use parse_date_time to fix it
 
 #ANSWER
+top20 <- read_csv("top_20.csv")
 
+top20 <- top20 %>%
+  mutate(Release = parse_date_time(Release, orders = "dmy"))
+
+glimpse(top20)
 
 ### Question 9 --------
 
@@ -129,7 +175,8 @@ load("rs_data.RData")
 # overwrite top20 with the pivoted data (there should now be 20 rows!)
 
 #ANSWER
-
+top20 <- top20 %>% 
+  pivot_wider(names_from = Style, values_from = Value)
 
 
 ### Question 10 ---------
