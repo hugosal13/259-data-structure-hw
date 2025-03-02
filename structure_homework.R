@@ -191,7 +191,15 @@ top20 <- top20 %>%
 
 #ANSWER
 
-
+#Key
+top20 <- left_join(top20, rs_joined, by = c("Artist","Song"))
+top20 <- top20 %>% mutate(Release_Month = month(Release_Date, label = T),
+                          Season = fct_collapse(Release_Month,
+                                                Winter = c("Dec", "Jan","Feb"),
+                                                Spring = c("Mar","Apr","May"),
+                                                Summer = c("Jun", "Jul","Aug"),
+                                                Fall = c("Sep", "Oct", "Nov")))
+fct_count(top20$Season)
 
 ### Question 11 ---------
 
@@ -202,5 +210,7 @@ top20 <- top20 %>%
 
 #ANSWER
 
-
+#Key
+top20 <- top20 %>% mutate(Quality = factor(ifelse(str_detect(Key, "m"), "Minor", "Major")))
+top20 %>% filter(Quality == "Minor") %>% slice_min(Rank_New)
 
